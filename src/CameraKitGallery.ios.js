@@ -14,7 +14,7 @@ async function getImageUriForId(imageId, imageQuality) {
     return;
   }
   if (images.length === 1) {
-    return images[0].uri;
+    return {uri: images[0].uri, mediaType: images[0].mediaType};
   }
   return;
 }
@@ -25,15 +25,18 @@ async function getImagesForIds(imagesId = [], imageQuality) {
 
 async function getImageForTapEvent(nativeEvent) {
   let selectedImageId;
-  let imageUri;
+  let uri;
+  let mediaType;
   if (nativeEvent.selectedId) {
     selectedImageId = nativeEvent.selectedId;
-    imageUri = nativeEvent.selected;
+    uri = nativeEvent.selected;
   } else {
     selectedImageId = nativeEvent.selected;
-    imageUri = await getImageUriForId(selectedImageId);
+    const data = await getImageUriForId(selectedImageId);
+    uri = data.uri;
+    mediaType = data.mediaType
   }
-  return {selectedImageId, imageUri, width: nativeEvent.width, height: nativeEvent.height};
+  return {selectedImageId, uri, width: nativeEvent.width, height: nativeEvent.height, mediaType};
 }
 
 async function getImagesForCameraEvent(event) {
