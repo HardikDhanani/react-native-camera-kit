@@ -236,6 +236,7 @@ RCT_EXPORT_METHOD(resizeImage:(NSDictionary*)image
             ans[@"name"] = temporaryFileURL.lastPathComponent;
             ans[@"size"] = @(compressedImage.data.length);
             ans[@"width"] = @(compressedImage.image.size.width);
+            ans[@"mediaType"] = @"image";
             ans[@"height"] = @(compressedImage.image.size.height);
         }
     }
@@ -262,32 +263,60 @@ RCT_EXPORT_METHOD(resizeImage:(NSDictionary*)image
     
     for (PHAsset *asset in assets) {
         
-        NSDictionary *assetInfoDict = [CKGalleryViewManager infoForAsset:asset imageRequestOptions:imageRequestOptions imageQuality:imageQuality];
-        NSString *assetLocalId = asset.localIdentifier;
+        [CKGalleryViewManager infoForAsset:asset imageRequestOptions:imageRequestOptions imageQuality:imageQuality block:^(NSDictionary *assetInfoDict) {
+            NSString *assetLocalId = asset.localIdentifier;
+
+            if (assetInfoDict && assetInfoDict[@"uri"] && assetInfoDict[@"size"] && assetInfoDict[@"name"] && assetLocalId) {
+
+                NSUInteger originalArrayIndex = [imagesIdArray indexOfObject:assetLocalId];
+
+                [assetsArray replaceObjectAtIndex:originalArrayIndex withObject:@{@"uri": assetInfoDict[@"uri"],
+                                                                                  @"width": assetInfoDict[@"width"],
+                                                                                  @"height": assetInfoDict[@"height"],
+                                                                                  @"size": assetInfoDict[@"size"],
+                                                                                  @"name": assetInfoDict[@"name"],
+                                                                                  @"mediaType": assetInfoDict[@"mediaType"],
+                                                                                  @"id": assetLocalId}];
+            }
+            
+            NSMutableArray *resolveArray = [NSMutableArray new];
+            for (id obj in assetsArray) {
+                if ([obj isKindOfClass:[NSDictionary class]]) {
+                    [resolveArray addObject:obj];
+                }
+            }
+            
+            if (resolve) {
+                resolve(@{@"images": resolveArray});
+            }
+        }];
         
-        if (assetInfoDict && assetInfoDict[@"uri"] && assetInfoDict[@"size"] && assetInfoDict[@"name"] && assetLocalId) {
-            
-            NSUInteger originalArrayIndex = [imagesIdArray indexOfObject:assetLocalId];
-            
-            [assetsArray replaceObjectAtIndex:originalArrayIndex withObject:@{@"uri": assetInfoDict[@"uri"],
-                                                                              @"width": assetInfoDict[@"width"],
-                                                                              @"height": assetInfoDict[@"height"],
-                                                                              @"size": assetInfoDict[@"size"],
-                                                                              @"name": assetInfoDict[@"name"],
-                                                                              @"id": assetLocalId}];
-        }
+//        NSDictionary *assetInfoDict = [CKGalleryViewManager infoForAsset:asset imageRequestOptions:imageRequestOptions imageQuality:imageQuality];
+//        NSString *assetLocalId = asset.localIdentifier;
+//
+//        if (assetInfoDict && assetInfoDict[@"uri"] && assetInfoDict[@"size"] && assetInfoDict[@"name"] && assetLocalId) {
+//
+//            NSUInteger originalArrayIndex = [imagesIdArray indexOfObject:assetLocalId];
+//
+//            [assetsArray replaceObjectAtIndex:originalArrayIndex withObject:@{@"uri": assetInfoDict[@"uri"],
+//                                                                              @"width": assetInfoDict[@"width"],
+//                                                                              @"height": assetInfoDict[@"height"],
+//                                                                              @"size": assetInfoDict[@"size"],
+//                                                                              @"name": assetInfoDict[@"name"],
+//                                                                              @"id": assetLocalId}];
+//        }
     }
     
-    NSMutableArray *resolveArray = [NSMutableArray new];
-    for (id obj in assetsArray) {
-        if ([obj isKindOfClass:[NSDictionary class]]) {
-            [resolveArray addObject:obj];
-        }
-    }
-    
-    if (resolve) {
-        resolve(@{@"images": resolveArray});
-    }
+//    NSMutableArray *resolveArray = [NSMutableArray new];
+//    for (id obj in assetsArray) {
+//        if ([obj isKindOfClass:[NSDictionary class]]) {
+//            [resolveArray addObject:obj];
+//        }
+//    }
+//
+//    if (resolve) {
+//        resolve(@{@"images": resolveArray});
+//    }
     
     
 }
