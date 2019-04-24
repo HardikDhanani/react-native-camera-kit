@@ -17,13 +17,14 @@
 #import "RCTConvert.h"
 #endif
 
-
+typedef void (^AlbumBlock)(NSDictionary *info);
 
 @interface CKGalleryViewManager : RCTViewManager
 
-+(NSMutableDictionary*)infoForAsset:(PHAsset*)asset
++(void)infoForAsset:(PHAsset*)asset
                 imageRequestOptions:(PHImageRequestOptions*)imageRequestOptions
-                       imageQuality:(NSString*)imageQuality;
+                       imageQuality:(NSString*)imageQuality
+                              block:(AlbumBlock)block;
 
 
 @end
