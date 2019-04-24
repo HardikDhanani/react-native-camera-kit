@@ -129,7 +129,7 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     if (!_fetchOptions) {
         PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
         fetchOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
-        fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d",PHAssetMediaTypeImage];
+        fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d || mediaType = %d",PHAssetMediaTypeImage, PHAssetMediaTypeVideo];
         
         _fetchOptions = fetchOptions;
     }
@@ -652,16 +652,27 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
         if (shouldReturnUrl) {
             PHImageRequestOptions *imageRequestOptions = [[PHImageRequestOptions alloc] init];
             imageRequestOptions.synchronous = YES;
-            NSDictionary *info = [CKGalleryViewManager infoForAsset:asset imageRequestOptions:imageRequestOptions imageQuality:self.imageQualityOnTap];
-            NSString *uriString = info[@"uri"];
-            
-            if (uriString) {
-                [imageTapInfo addEntriesFromDictionary:@{@"selected": uriString, @"selectedId": asset.localIdentifier, @"isSelected": isSelectedNumber}];
-                self.onTapImage(imageTapInfo);
-            }
-            else {
-                self.onTapImage(@{@"Error": @"Could not get image uri"});
-            }
+            [CKGalleryViewManager infoForAsset:asset imageRequestOptions:imageRequestOptions imageQuality:self.imageQualityOnTap block:^(NSDictionary *info) {
+                NSString *uriString = info[@"uri"];
+                
+                if (uriString) {
+                    [imageTapInfo addEntriesFromDictionary:@{@"selected": uriString, @"selectedId": asset.localIdentifier, @"isSelected": isSelectedNumber}];
+                    self.onTapImage(imageTapInfo);
+                }
+                else {
+                    self.onTapImage(@{@"Error": @"Could not get image uri"});
+                }
+            }];
+//            NSDictionary *info = [CKGalleryViewManager infoForAsset:asset imageRequestOptions:imageRequestOptions imageQuality:self.imageQualityOnTap];
+//            NSString *uriString = info[@"uri"];
+//
+//            if (uriString) {
+//                [imageTapInfo addEntriesFromDictionary:@{@"selected": uriString, @"selectedId": asset.localIdentifier, @"isSelected": isSelectedNumber}];
+//                self.onTapImage(imageTapInfo);
+//            }
+//            else {
+//                self.onTapImage(@{@"Error": @"Could not get image uri"});
+//            }
             
         }
         else {
@@ -842,9 +853,10 @@ RCT_EXPORT_METHOD(modifyGalleryViewContentOffset:(NSDictionary*)params) {
 #pragma mark - Static functions
 
 
-+(NSMutableDictionary*)infoForAsset:(PHAsset*)asset
++(void)infoForAsset:(PHAsset*)asset
                 imageRequestOptions:(PHImageRequestOptions*)imageRequestOptions
-                       imageQuality:(NSString*)imageQuality {
+                       imageQuality:(NSString*)imageQuality
+                              block:(AlbumBlock)block {
     
     NSError *error = nil;
     NSURL *directoryURL = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[[NSProcessInfo processInfo] globallyUniqueString]] isDirectory:YES];
@@ -857,57 +869,121 @@ RCT_EXPORT_METHOD(modifyGalleryViewContentOffset:(NSDictionary*)params) {
     
     
     __block NSMutableDictionary *assetInfoDict = nil;
-    
-    [[PHCachingImageManager defaultManager] requestImageDataForAsset:asset options:imageRequestOptions resultHandler:^(NSData * _Nullable imageData, NSString * _Nullable dataUTI, UIImageOrientation orientation, NSDictionary * _Nullable info) {
-        
-        NSString *fileName = ((NSURL*)info[@"PHImageFileURLKey"]).lastPathComponent;
-        fileName = [CKGalleryViewManager handleNonJPEGOrPNGFormatsFileName:fileName dataUTI:dataUTI];
-        imageData = [CKGalleryViewManager handleNonJPEGOrPNGFormatsData:imageData dataUTI:dataUTI];
-        
-        NSData *compressedImageData = imageData;
-        
-        UIImage *compressedImage = [UIImage imageWithData:imageData];
-        
-        NSURL *fileURLKey = info[@"PHImageFileURLKey"];
-        
-        if (fileURLKey) {
-            
-            assetInfoDict = [[NSMutableDictionary alloc] init];
-            
-            assetInfoDict[@"width"] = [NSNumber numberWithFloat:compressedImage.size.width];
-            assetInfoDict[@"height"] = [NSNumber numberWithFloat:compressedImage.size.height];
-            
-            if (fileName) {
-                assetInfoDict[@"name"] = fileName;
-            } else {
-                fileName = @"";
-            }
-            
-            float imageSize = 0;
-            if (compressedImageData) {
-                imageSize = compressedImageData.length;
-            }
-            assetInfoDict[@"size"] = [NSNumber numberWithFloat:imageSize];
-            
-            NSURL *fileURL = [directoryURL URLByAppendingPathComponent:fileName];
-            NSError *error = nil;
-            
-            [compressedImageData writeToURL:fileURL options:NSDataWritingAtomic error:&error];
-            
-            if (!error && fileURL) {
-                assetInfoDict[@"uri"] = fileURL.absoluteString;
-            }
-            else if (error){
-                //NSLog(@"%@", error);
-            }
+    switch (asset.mediaType) {
+        case PHAssetMediaTypeVideo:
+        {
+            PHVideoRequestOptions *options = [[PHVideoRequestOptions alloc]init];
+            options.version = PHVideoRequestOptionsVersionOriginal;
+            options.deliveryMode = PHVideoRequestOptionsDeliveryModeAutomatic;
+            options.networkAccessAllowed = YES;
+            [[PHImageManager defaultManager] requestAVAssetForVideo:asset options:options resultHandler:^(AVAsset * _Nullable asset, AVAudioMix * _Nullable audioMix, NSDictionary * _Nullable info) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    AVURLAsset *urlAsset = (AVURLAsset*)asset;
+                    
+                    NSURL *fileURLKey = urlAsset.URL;
+                    
+                    if (fileURLKey) {
+                
+                        assetInfoDict = [[NSMutableDictionary alloc] init];
+                        
+                        AVAssetTrack *track = [[asset tracksWithMediaType:AVMediaTypeVideo] firstObject];
+                        CGSize dimensions = CGSizeApplyAffineTransform(track.naturalSize, track.preferredTransform);
+                        assetInfoDict[@"width"] = [NSNumber numberWithFloat:dimensions.width];
+                        assetInfoDict[@"height"] = [NSNumber numberWithFloat:dimensions.height];
+                        
+                        CMTime duration = asset.duration;
+                        CGFloat durationTime = CMTimeGetSeconds(duration);
+                        assetInfoDict[@"duration"] = [NSNumber numberWithFloat:durationTime];
+                        
+                        NSString *fileName = urlAsset.URL.lastPathComponent;
+                        if (fileName) {
+                            assetInfoDict[@"name"] = fileName;
+                        } else {
+                            fileName = @"";
+                        }
+                    
+                        float imageSize = 0;
+                        NSData *data = [NSData dataWithContentsOfFile:urlAsset.URL.relativePath];
+                        if (data) {
+                            imageSize = data.length;
+                        }
+                        assetInfoDict[@"size"] = [NSNumber numberWithFloat:imageSize];
+                        
+                        assetInfoDict[@"uri"] = fileURLKey.absoluteString;
+                    }
+                    
+                    assetInfoDict[@"mediaType"] = @"video";
+                    if (assetInfoDict && asset)
+                        assetInfoDict[@"asset"] = asset;
+                    
+                    if (block)
+                        block(assetInfoDict);
+                    
+                });
+            }];
         }
-    }];
-    
-    if (assetInfoDict && asset) {
-        assetInfoDict[@"asset"] = asset;
+            break;
+        default:
+            [[PHCachingImageManager defaultManager] requestImageDataForAsset:asset options:imageRequestOptions resultHandler:^(NSData * _Nullable imageData, NSString * _Nullable dataUTI, UIImageOrientation orientation, NSDictionary * _Nullable info) {
+                
+                NSString *fileName = ((NSURL*)info[@"PHImageFileURLKey"]).lastPathComponent;
+                fileName = [CKGalleryViewManager handleNonJPEGOrPNGFormatsFileName:fileName dataUTI:dataUTI];
+                imageData = [CKGalleryViewManager handleNonJPEGOrPNGFormatsData:imageData dataUTI:dataUTI];
+                
+                NSData *compressedImageData = imageData;
+                
+                UIImage *compressedImage = [UIImage imageWithData:imageData];
+                
+                NSURL *fileURLKey = info[@"PHImageFileURLKey"];
+                
+                if (fileURLKey) {
+                    
+                    assetInfoDict = [[NSMutableDictionary alloc] init];
+                    
+                    assetInfoDict[@"width"] = [NSNumber numberWithFloat:compressedImage.size.width];
+                    assetInfoDict[@"height"] = [NSNumber numberWithFloat:compressedImage.size.height];
+                    
+                    if (fileName) {
+                        assetInfoDict[@"name"] = fileName;
+                    } else {
+                        fileName = @"";
+                    }
+                    
+                    float imageSize = 0;
+                    if (compressedImageData) {
+                        imageSize = compressedImageData.length;
+                    }
+                    assetInfoDict[@"size"] = [NSNumber numberWithFloat:imageSize];
+                    
+                    NSURL *fileURL = [directoryURL URLByAppendingPathComponent:fileName];
+                    NSError *error = nil;
+                    
+                    [compressedImageData writeToURL:fileURL options:NSDataWritingAtomic error:&error];
+                    
+                    if (!error && fileURL) {
+                        assetInfoDict[@"uri"] = fileURL.absoluteString;
+                    }
+                    else if (error){
+                        //NSLog(@"%@", error);
+                    }
+                }
+                
+                assetInfoDict[@"mediaType"] = @"image";
+                if (assetInfoDict && asset)
+                    assetInfoDict[@"asset"] = asset;
+                
+                if (block)
+                    block(assetInfoDict);
+                
+            }];
+            break;
     }
     
-    return assetInfoDict;
+//    if (assetInfoDict && asset) {
+//        assetInfoDict[@"asset"] = asset;
+//    }
+    
+//    return assetInfoDict;
 }
 
 
