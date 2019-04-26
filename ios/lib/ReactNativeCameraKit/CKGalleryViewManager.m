@@ -23,7 +23,7 @@
 #define DEFAULT_MINIMUM_INTERITEM_SPACING               10.0
 #define DEFAULT_MINIMUM_LINE_SPACING                    10.0
 #define IMAGE_SIZE_MULTIPLIER                           2
-
+#define DEFAULT_FETCH_LIMIT                    10.0
 
 
 typedef void (^CompletionBlock)(BOOL success);
@@ -35,10 +35,12 @@ typedef void (^CompletionBlock)(BOOL success);
 @property (nonatomic, strong) NSString *albumName;
 @property (nonatomic, strong) NSNumber *minimumLineSpacing;
 @property (nonatomic, strong) NSNumber *minimumInteritemSpacing;
+@property (nonatomic, strong) NSNumber *fetchLimit;
 @property (nonatomic, strong) NSNumber *columnCount;
 @property (nonatomic, strong) NSNumber *getUrlOnTapImage;
 @property (nonatomic, strong) NSNumber *autoSyncSelection;
 @property (nonatomic, strong) NSString *imageQualityOnTap;
+@property (nonatomic, strong) NSString *mediaType;
 @property (nonatomic, copy) RCTDirectEventBlock onTapImage;
 @property (nonatomic, copy) RCTDirectEventBlock onRemoteDownloadChanged;
 
@@ -105,6 +107,9 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
         self.isHorizontal = NO;
         self.cellSizeInvalidated = NO;
         self.collectionViewIsScrolling = NO;
+        
+        if (self.fetchLimit == nil)
+            self.fetchLimit = [NSNumber numberWithInteger:DEFAULT_FETCH_LIMIT];
     }
     
     return self;
@@ -125,11 +130,11 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     return _cellSize;
 }
 
--(PHFetchOptions *)fetchOptions {
+- (PHFetchOptions *)fetchOptions {
     if (!_fetchOptions) {
         PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
         fetchOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
-        fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d || mediaType = %d",PHAssetMediaTypeImage, PHAssetMediaTypeVideo];
+        fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d",PHAssetMediaTypeImage];
         
         _fetchOptions = fetchOptions;
     }
@@ -333,29 +338,40 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
 }
 
 
--(void)setAlbumName:(NSString *)albumName {
-    
+- (void)setAlbumName:(NSString *)albumName {
     
     if ([albumName caseInsensitiveCompare:@"all photos"] == NSOrderedSame || !albumName || [albumName isEqualToString:@""]) {
-        
         PHFetchResult *allPhotosFetchResults = [PHAsset fetchAssetsWithOptions:self.fetchOptions];
         [self upadateCollectionView:allPhotosFetchResults animated:(self.galleryData != nil)];
         return;
     }
     
     PHFetchResult *collections = [PHCollectionList fetchTopLevelUserCollectionsWithOptions:nil];
-    
     [collections enumerateObjectsUsingBlock:^(PHAssetCollection *collection, NSUInteger idx, BOOL * _Nonnull stop) {
-        
         if ([collection.localizedTitle isEqualToString:albumName]) {
-            
             PHFetchResult *collectionFetchResults = [PHAsset fetchAssetsInAssetCollection:collection options:nil];
             [self upadateCollectionView:collectionFetchResults animated:(self.galleryData != nil)];
             *stop = YES;
             return;
         }
     }];
+}
+
+- (void)setMediaType:(NSString *)mediaType {
     
+    if ([mediaType caseInsensitiveCompare:@"videos"] == NSOrderedSame) {
+        _fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeVideo];
+        PHFetchResult *allPhotosFetchResults = [PHAsset fetchAssetsWithOptions:self.fetchOptions];
+        [self upadateCollectionView:allPhotosFetchResults animated:(self.galleryData != nil)];
+        return;
+    }
+    
+    if ([mediaType caseInsensitiveCompare:@"all"] == NSOrderedSame) {
+        _fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d || mediaType = %d",PHAssetMediaTypeImage, PHAssetMediaTypeVideo];
+        PHFetchResult *allPhotosFetchResults = [PHAsset fetchAssetsWithOptions:self.fetchOptions];
+        [self upadateCollectionView:allPhotosFetchResults animated:(self.galleryData != nil)];
+        return;
+    }
 }
 
 
@@ -553,10 +569,19 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     
+    NSArray *arrSelectedImage = [self.galleryData.data filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"isSelected == %@", [NSNumber numberWithBool:true]]];
+    
     NSInteger galleryDataIndex = indexPath.row;
     if (self.customButtonStyle) {
         galleryDataIndex--;
     }
+    
+    NSMutableDictionary *assetDictionary = (NSMutableDictionary*)self.galleryData.data[galleryDataIndex];
+    PHAsset *asset = assetDictionary[@"asset"];
+    NSNumber *isSelectedNumber = assetDictionary[@"isSelected"];
+    
+    if (!isSelectedNumber.boolValue && (arrSelectedImage.count + 1 > [_fetchLimit integerValue]))
+        return;
     
     if (indexPath.row == 0 && self.onCustomButtonPress) {
         self.onCustomButtonPress(@{@"selected":@"customButtonPressed"});
@@ -567,12 +592,7 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     
     if ([selectedCell isKindOfClass:[CKGalleryCollectionViewCell class]]) {
         CKGalleryCollectionViewCell *ckCell = (CKGalleryCollectionViewCell*)selectedCell;
-        
-        NSMutableDictionary *assetDictionary = (NSMutableDictionary*)self.galleryData.data[galleryDataIndex];
-        PHAsset *asset = assetDictionary[@"asset"];
-        NSNumber *isSelectedNumber = assetDictionary[@"isSelected"];
         assetDictionary[@"isSelected"] = [NSNumber numberWithBool:!(isSelectedNumber.boolValue)];
-        
         [self downloadImageFromICloudIfNeeded:asset cell:ckCell completion:^(BOOL success) {
             
             if (success) {
@@ -749,8 +769,10 @@ RCT_EXPORT_MODULE()
 
 
 RCT_EXPORT_VIEW_PROPERTY(albumName, NSString);
+RCT_EXPORT_VIEW_PROPERTY(mediaType, NSString);
 RCT_EXPORT_VIEW_PROPERTY(minimumLineSpacing, NSNumber);
 RCT_EXPORT_VIEW_PROPERTY(minimumInteritemSpacing, NSNumber);
+RCT_EXPORT_VIEW_PROPERTY(fetchLimit, NSNumber);
 RCT_EXPORT_VIEW_PROPERTY(columnCount, NSNumber);
 RCT_EXPORT_VIEW_PROPERTY(onTapImage, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(selectedImageIcon, UIImage);
