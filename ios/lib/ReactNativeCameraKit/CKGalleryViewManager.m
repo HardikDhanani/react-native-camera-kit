@@ -35,7 +35,7 @@ typedef void (^CompletionBlock)(BOOL success);
 @property (nonatomic, strong) NSString *albumName;
 @property (nonatomic, strong) NSNumber *minimumLineSpacing;
 @property (nonatomic, strong) NSNumber *minimumInteritemSpacing;
-@property (nonatomic, strong) NSNumber *fetchLimit;
+@property (nonatomic, strong) NSNumber *maxSelectedAsset;
 @property (nonatomic, strong) NSNumber *columnCount;
 @property (nonatomic, strong) NSNumber *getUrlOnTapImage;
 @property (nonatomic, strong) NSNumber *autoSyncSelection;
@@ -108,8 +108,8 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
         self.cellSizeInvalidated = NO;
         self.collectionViewIsScrolling = NO;
         
-        if (self.fetchLimit == nil)
-            self.fetchLimit = [NSNumber numberWithInteger:DEFAULT_FETCH_LIMIT];
+        if (self.maxSelectedAsset == nil)
+            self.maxSelectedAsset = [NSNumber numberWithInteger:DEFAULT_FETCH_LIMIT];
     }
     
     return self;
@@ -580,7 +580,7 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     PHAsset *asset = assetDictionary[@"asset"];
     NSNumber *isSelectedNumber = assetDictionary[@"isSelected"];
     
-    if (!isSelectedNumber.boolValue && (arrSelectedImage.count + 1 > [_fetchLimit integerValue]))
+    if (!isSelectedNumber.boolValue && (arrSelectedImage.count + 1 > [_maxSelectedAsset integerValue]))
         return;
     
     if (indexPath.row == 0 && self.onCustomButtonPress) {
@@ -772,7 +772,7 @@ RCT_EXPORT_VIEW_PROPERTY(albumName, NSString);
 RCT_EXPORT_VIEW_PROPERTY(mediaType, NSString);
 RCT_EXPORT_VIEW_PROPERTY(minimumLineSpacing, NSNumber);
 RCT_EXPORT_VIEW_PROPERTY(minimumInteritemSpacing, NSNumber);
-RCT_EXPORT_VIEW_PROPERTY(fetchLimit, NSNumber);
+RCT_EXPORT_VIEW_PROPERTY(maxSelectedAsset, NSNumber);
 RCT_EXPORT_VIEW_PROPERTY(columnCount, NSNumber);
 RCT_EXPORT_VIEW_PROPERTY(onTapImage, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(selectedImageIcon, UIImage);
