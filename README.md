@@ -174,6 +174,7 @@ Attribute | Values | Description
 `minimumLineSpacing`             | Float             | Minimum line spacing
 `imageStrokeColor`               | Color             | Image stroke color
 `imageStrokeColorWidth`          | Number > 0        | Image stroke color width 
+`maxSelectedAsset` (iOS)         | Number            | By default value 10
 `albumName`                      | String            | Album name to show
 `columnCount`                    | Integer           | How many clumns in one row
 `onTapImage`                     | Function          | Callback when image tapped
@@ -185,6 +186,7 @@ Attribute | Values | Description
 `customButtonStyle`              | Object            | See [Custom Button](#custom-button) section
 `onCustomButtonPress`            | Function          | Callback when custom button tapped
 `contentInset` (iOS)             | Object            | The amount by which the gellery view content is inset from its edges (similar to `ScrollView` contentInset)
+`mediaType` (iOS)                | String (`'photos'` / `'videos'` / `'all'`)            | By default fetch all photos from library 
 `remoteDownloadIndicatorType`    | String (`'spinner'` / `'progress-bar'` / `'progress-pie'`) | iOS only - see [Images stored in iCloud](#images-stored-in-iCloud)
 `remoteDownloadIndicatorColor`   | Color             | iOS only - Color of the remote download indicator to show  
 `onRemoteDownloadChanged`        | Function          | iOS only - Callback when the device curentlly download remote image stored in the iCloud.
