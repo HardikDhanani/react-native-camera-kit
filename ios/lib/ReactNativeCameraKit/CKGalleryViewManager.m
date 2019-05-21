@@ -130,7 +130,8 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     return _cellSize;
 }
 
-- (PHFetchOptions *)fetchOptions {
+- (PHFetchOptions *)fetchOptions
+{
     if (!_fetchOptions) {
         PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
         fetchOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
@@ -142,14 +143,14 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     return _fetchOptions;
 }
 
-
--(void)removeFromSuperview {
+- (void)removeFromSuperview
+{
     [CKGalleryCollectionViewCell cleanStaticsVariables];
     [super removeFromSuperview];
 }
 
-
--(void)reactSetFrame:(CGRect)frame {
+- (void)reactSetFrame:(CGRect)frame
+{
     [super reactSetFrame:frame];
     
     if (CGRectIsEmpty(frame)) return;
@@ -338,28 +339,46 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
 }
 
 
-- (void)setAlbumName:(NSString *)albumName {
-    
-    if ([albumName caseInsensitiveCompare:@"all photos"] == NSOrderedSame || !albumName || [albumName isEqualToString:@""]) {
-        PHFetchResult *allPhotosFetchResults = [PHAsset fetchAssetsWithOptions:self.fetchOptions];
-        [self upadateCollectionView:allPhotosFetchResults animated:(self.galleryData != nil)];
-        return;
-    }
-    
-    PHFetchResult *collections = [PHCollectionList fetchTopLevelUserCollectionsWithOptions:nil];
-    [collections enumerateObjectsUsingBlock:^(PHAssetCollection *collection, NSUInteger idx, BOOL * _Nonnull stop) {
-        if ([collection.localizedTitle isEqualToString:albumName]) {
-            PHFetchResult *collectionFetchResults = [PHAsset fetchAssetsInAssetCollection:collection options:nil];
-            [self upadateCollectionView:collectionFetchResults animated:(self.galleryData != nil)];
-            *stop = YES;
-            return;
+- (void)setAlbumName:(NSString *)albumName
+{
+//    if ([albumName caseInsensitiveCompare:@"all photos"] == NSOrderedSame || !albumName || [albumName isEqualToString:@""]) {
+//        PHFetchResult *allPhotosFetchResults = [PHAsset fetchAssetsWithOptions:self.fetchOptions];
+//        [self upadateCollectionView:allPhotosFetchResults animated:(self.galleryData != nil)];
+//        return;
+//    }
+//
+//    PHFetchResult *collections = [PHCollectionList fetchTopLevelUserCollectionsWithOptions:nil];
+//    [collections enumerateObjectsUsingBlock:^(PHAssetCollection *collection, NSUInteger idx, BOOL * _Nonnull stop) {
+//        if ([collection.localizedTitle isEqualToString:albumName]) {
+//            PHFetchResult *collectionFetchResults = [PHAsset fetchAssetsInAssetCollection:collection options:nil];
+//            [self upadateCollectionView:collectionFetchResults animated:(self.galleryData != nil)];
+//            *stop = YES;
+//            return;
+//        }
+//    }];
+}
+
+- (void)setMediaType:(NSString *)mediaType
+{
+    [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
+        switch (status) {
+            case PHAuthorizationStatusAuthorized:
+                [self updatePredicate:mediaType];
+                break;
+            case PHAuthorizationStatusRestricted:
+                break;
+            case PHAuthorizationStatusDenied:
+                break;
+            default:
+                break;
         }
     }];
 }
 
-- (void)setMediaType:(NSString *)mediaType {
-    
+- (void)updatePredicate:(NSString *)mediaType
+{
     if ([mediaType caseInsensitiveCompare:@"videos"] == NSOrderedSame) {
+        [self fetchOptions];
         _fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeVideo];
         PHFetchResult *allPhotosFetchResults = [PHAsset fetchAssetsWithOptions:self.fetchOptions];
         [self upadateCollectionView:allPhotosFetchResults animated:(self.galleryData != nil)];
@@ -367,13 +386,19 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     }
     
     if ([mediaType caseInsensitiveCompare:@"all"] == NSOrderedSame) {
+        [self fetchOptions];
         _fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d || mediaType = %d",PHAssetMediaTypeImage, PHAssetMediaTypeVideo];
         PHFetchResult *allPhotosFetchResults = [PHAsset fetchAssetsWithOptions:self.fetchOptions];
         [self upadateCollectionView:allPhotosFetchResults animated:(self.galleryData != nil)];
         return;
     }
+    
+    if ([mediaType caseInsensitiveCompare:@"photos"] == NSOrderedSame) {
+        PHFetchResult *allPhotosFetchResults = [PHAsset fetchAssetsWithOptions:self.fetchOptions];
+        [self upadateCollectionView:allPhotosFetchResults animated:(self.galleryData != nil)];
+        return;
+    }
 }
-
 
 #pragma mark - UICollectionViewDataSource
 
