@@ -341,21 +341,21 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
 
 - (void)setAlbumName:(NSString *)albumName
 {
-//    if ([albumName caseInsensitiveCompare:@"all photos"] == NSOrderedSame || !albumName || [albumName isEqualToString:@""]) {
-//        PHFetchResult *allPhotosFetchResults = [PHAsset fetchAssetsWithOptions:self.fetchOptions];
-//        [self upadateCollectionView:allPhotosFetchResults animated:(self.galleryData != nil)];
-//        return;
-//    }
-//
-//    PHFetchResult *collections = [PHCollectionList fetchTopLevelUserCollectionsWithOptions:nil];
-//    [collections enumerateObjectsUsingBlock:^(PHAssetCollection *collection, NSUInteger idx, BOOL * _Nonnull stop) {
-//        if ([collection.localizedTitle isEqualToString:albumName]) {
-//            PHFetchResult *collectionFetchResults = [PHAsset fetchAssetsInAssetCollection:collection options:nil];
-//            [self upadateCollectionView:collectionFetchResults animated:(self.galleryData != nil)];
-//            *stop = YES;
-//            return;
-//        }
-//    }];
+    if ([albumName caseInsensitiveCompare:@"all photos"] == NSOrderedSame || !albumName || [albumName isEqualToString:@""]) {
+        PHFetchResult *allPhotosFetchResults = [PHAsset fetchAssetsWithOptions:self.fetchOptions];
+        [self upadateCollectionView:allPhotosFetchResults animated:(self.galleryData != nil)];
+        return;
+    }
+
+    PHFetchResult *collections = [PHCollectionList fetchTopLevelUserCollectionsWithOptions:nil];
+    [collections enumerateObjectsUsingBlock:^(PHAssetCollection *collection, NSUInteger idx, BOOL * _Nonnull stop) {
+        if ([collection.localizedTitle isEqualToString:albumName]) {
+            PHFetchResult *collectionFetchResults = [PHAsset fetchAssetsInAssetCollection:collection options:nil];
+            [self upadateCollectionView:collectionFetchResults animated:(self.galleryData != nil)];
+            *stop = YES;
+            return;
+        }
+    }];
 }
 
 - (void)setMediaType:(NSString *)mediaType
@@ -378,7 +378,6 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
 - (void)updatePredicate:(NSString *)mediaType
 {
     if ([mediaType caseInsensitiveCompare:@"videos"] == NSOrderedSame) {
-        [self fetchOptions];
         _fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeVideo];
         PHFetchResult *allPhotosFetchResults = [PHAsset fetchAssetsWithOptions:self.fetchOptions];
         [self upadateCollectionView:allPhotosFetchResults animated:(self.galleryData != nil)];
@@ -386,7 +385,6 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     }
     
     if ([mediaType caseInsensitiveCompare:@"all"] == NSOrderedSame) {
-        [self fetchOptions];
         _fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d || mediaType = %d",PHAssetMediaTypeImage, PHAssetMediaTypeVideo];
         PHFetchResult *allPhotosFetchResults = [PHAsset fetchAssetsWithOptions:self.fetchOptions];
         [self upadateCollectionView:allPhotosFetchResults animated:(self.galleryData != nil)];
