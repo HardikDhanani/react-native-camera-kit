@@ -40,6 +40,7 @@ alpha:1.0]
 
 static UIImage *selectedImageIcon = nil;
 static UIImage *unSelectedImageIcon = nil;
+static UIImage *videoImageIcon = nil;
 static NSDictionary *supported = nil;
 static UIColor *imageStrokeColor = nil;
 static NSNumber *imageStrokeColorWidth = nil;
@@ -60,7 +61,6 @@ static NSString *remoteDownloadIndicatorType = REMOTE_DOWNLOAD_INDICATOR_TYPE_SP
 @property (nonatomic, strong) UIActivityIndicatorView *spinner;
 @property (nonatomic, strong) UIProgressView *progressBarView;
 @property (nonatomic, strong) M13ProgressViewPie *progressPieView;
-
 
 @end
 
@@ -194,6 +194,28 @@ static NSString *remoteDownloadIndicatorType = REMOTE_DOWNLOAD_INDICATOR_TYPE_SP
     
     self.badgeImageView = [[UIImageView alloc] init];
     [self addSubview:self.badgeImageView];
+    
+    self.videoBottomView = [[UIView alloc] initWithFrame:CGRectMake(0, imageViewFrame.size.height-30, imageViewFrame.size.width, 30)];
+    self.videoBottomView.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.65];
+    
+    self.videoImageView = [[UIImageView alloc] initWithFrame:CGRectMake(5, 5, 20, 20)];
+    self.videoImageView.contentMode = UIViewContentModeScaleAspectFit;
+    UIImage *image = [UIImage imageNamed:@"video_camera"];
+    self.videoImageView.image = image;
+    self.videoImageView.backgroundColor = [UIColor clearColor];
+
+    [self.videoBottomView addSubview:self.videoImageView];
+    
+    CGFloat x = self.videoImageView.bounds.origin.x + self.videoImageView.bounds.size.width + 5;
+    CGFloat width = imageViewFrame.size.width - x - 5;
+    self.lblDuration = [[UILabel alloc] initWithFrame:CGRectMake(x, 5, width, 20)];
+    self.lblDuration.textColor = [UIColor whiteColor];
+    self.lblDuration.textAlignment = NSTextAlignmentRight;
+    self.lblDuration.font = [UIFont systemFontOfSize:12];
+    [self.videoBottomView addSubview:self.lblDuration];
+    
+    [self addSubview:self.videoBottomView];
+    self.videoBottomView.hidden = true;
     
     self.isSupported = YES;
     
