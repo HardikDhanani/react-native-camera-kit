@@ -26,6 +26,10 @@
 
 @interface CKGalleryCollectionViewCell : UICollectionViewCell
 
+@property (strong, nonatomic) UIView *videoBottomView;
+@property (strong, nonatomic) UIImageView *videoImageView;
+@property (strong, nonatomic) UILabel *lblDuration;
+
 -(void)setPressed:(BOOL)pressed;
 
 +(void)setSelectedImageIcon:(UIImage*)image;
