@@ -203,7 +203,6 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     self.galleryData = [[GalleryData alloc] initWithFetchResults:fetchResults selectedImagesIds:self.selectedImages];
     
     if (animated) {
-        
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^ {
             [self.collectionView performBatchUpdates:^{
                 [self.collectionView reloadSections:[NSIndexSet indexSetWithIndex:0]];
@@ -346,11 +345,32 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
         [self upadateCollectionView:allPhotosFetchResults animated:(self.galleryData != nil)];
         return;
     }
-
-    PHFetchResult *collections = [PHCollectionList fetchTopLevelUserCollectionsWithOptions:nil];
-    [collections enumerateObjectsUsingBlock:^(PHAssetCollection *collection, NSUInteger idx, BOOL * _Nonnull stop) {
+    
+    NSArray *collectionsFetchResults;
+    
+    PHFetchResult *smartAlbums = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeAlbumRegular options:nil];
+    PHFetchResult *syncedAlbums = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum subtype:PHAssetCollectionSubtypeAlbumSyncedAlbum options:nil];
+    PHFetchResult *userCollections = [PHCollectionList fetchTopLevelUserCollectionsWithOptions:nil];
+    
+    // Add each PHFetchResult to the array
+    collectionsFetchResults = @[smartAlbums, userCollections, syncedAlbums];
+    NSMutableArray *localizedTitles = [[NSMutableArray alloc] init];
+    for (int i = 0; i < collectionsFetchResults.count; i ++)
+    {
+        PHFetchResult *fetchResult = collectionsFetchResults[i];
+        for (int x = 0; x < fetchResult.count; x++)
+        {
+            PHCollection *collection = fetchResult[x];
+            [localizedTitles addObject:collection];
+        }
+    }
+    
+    [localizedTitles enumerateObjectsUsingBlock:^(PHAssetCollection *collection, NSUInteger idx, BOOL * _Nonnull stop) {
         if ([collection.localizedTitle isEqualToString:albumName]) {
-            PHFetchResult *collectionFetchResults = [PHAsset fetchAssetsInAssetCollection:collection options:nil];
+            PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
+            fetchOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
+            fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d || mediaType = %d", PHAssetMediaTypeImage, PHAssetMediaTypeVideo];
+            PHFetchResult *collectionFetchResults = [PHAsset fetchAssetsInAssetCollection:collection options:fetchOptions];
             [self upadateCollectionView:collectionFetchResults animated:(self.galleryData != nil)];
             *stop = YES;
             return;
@@ -443,6 +463,19 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     __block CKGalleryCollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:CellReuseIdentifier forIndexPath:indexPath];
     cell.delegate = self;
     cell.disableSelectionIcons = self.disableSelectionIcons ? self.disableSelectionIcons.boolValue : false;
+    
+    cell.videoBottomView.hidden = true;
+    if (asset.mediaType == PHAssetMediaTypeVideo) {
+        cell.videoBottomView.hidden = false;
+        NSInteger duration = (NSInteger)asset.duration;
+        NSInteger hrs = duration/3600;
+        NSInteger mins = (duration%3600)/60;
+        NSInteger secs = (duration%3600)%60;
+        if(hrs > 0)
+            cell.lblDuration.text = [NSString stringWithFormat:@"%ld:%02ld:%02ld",(long)hrs,(long)mins,(long)secs];
+        else
+            cell.lblDuration.text = [NSString stringWithFormat:@"%ld:%02ld",(long)mins,(long)secs];
+    }
     
     if (self.supportedFileTypesArray) {
         cell.isSupported = [self.supportedFileTypesArray containsObject:[MIMETypeString lowercaseString]];
