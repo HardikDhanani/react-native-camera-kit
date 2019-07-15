@@ -378,6 +378,66 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     }];
 }
 
+- (void)setCustomFetchData:(NSDictionary *)customFetchData
+{
+    BOOL isAlbum = [[customFetchData valueForKey:@"isAlbum"] boolValue];
+
+    NSString *mediaType = [customFetchData valueForKey:@"mediaType"];
+    if (isAlbum) {
+        NSString *albumName = [customFetchData valueForKey:@"albumName"];
+        
+        NSArray *collectionsFetchResults;
+        PHFetchResult *smartAlbums = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeAlbumRegular options:nil];
+        PHFetchResult *syncedAlbums = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum subtype:PHAssetCollectionSubtypeAlbumSyncedAlbum options:nil];
+        PHFetchResult *userCollections = [PHCollectionList fetchTopLevelUserCollectionsWithOptions:nil];
+        
+        // Add each PHFetchResult to the array
+        collectionsFetchResults = @[smartAlbums, userCollections, syncedAlbums];
+        NSMutableArray *localizedTitles = [[NSMutableArray alloc] init];
+        for (int i = 0; i < collectionsFetchResults.count; i ++)
+        {
+            PHFetchResult *fetchResult = collectionsFetchResults[i];
+            for (int x = 0; x < fetchResult.count; x++)
+            {
+                PHCollection *collection = fetchResult[x];
+                [localizedTitles addObject:collection];
+            }
+        }
+        
+        [localizedTitles enumerateObjectsUsingBlock:^(PHAssetCollection *collection, NSUInteger idx, BOOL * _Nonnull stop) {
+            if ([collection.localizedTitle isEqualToString:albumName]) {
+                PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
+                fetchOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
+                if ([mediaType caseInsensitiveCompare:@"all"] == NSOrderedSame)
+                    fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d || mediaType = %d", PHAssetMediaTypeImage, PHAssetMediaTypeVideo];
+                else if ([mediaType caseInsensitiveCompare:@"photos"] == NSOrderedSame)
+                    fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
+                else if ([mediaType caseInsensitiveCompare:@"videos"] == NSOrderedSame)
+                    fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeVideo];
+    
+                self.fetchOptions = fetchOptions;
+                PHFetchResult *collectionFetchResults = [PHAsset fetchAssetsInAssetCollection:collection options:self.fetchOptions];
+                [self upadateCollectionView:collectionFetchResults animated:(self.galleryData != nil)];
+                *stop = YES;
+                return;
+            }
+        }];
+    } else {
+        PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
+        fetchOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
+        if ([mediaType caseInsensitiveCompare:@"all"] == NSOrderedSame)
+            fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d || mediaType = %d", PHAssetMediaTypeImage, PHAssetMediaTypeVideo];
+        else if ([mediaType caseInsensitiveCompare:@"photos"] == NSOrderedSame)
+            fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
+        else if ([mediaType caseInsensitiveCompare:@"videos"] == NSOrderedSame)
+            fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeVideo];
+        
+        self.fetchOptions = fetchOptions;
+        PHFetchResult *allPhotosFetchResults = [PHAsset fetchAssetsWithOptions:self.fetchOptions];
+        [self upadateCollectionView:allPhotosFetchResults animated:(self.galleryData != nil)];
+    }
+}
+
 - (void)setMediaType:(NSString *)mediaType
 {
     [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
@@ -851,6 +911,7 @@ RCT_EXPORT_VIEW_PROPERTY(remoteDownloadIndicatorColor, UIColor);
 RCT_EXPORT_VIEW_PROPERTY(remoteDownloadIndicatorType, NSString);
 RCT_EXPORT_VIEW_PROPERTY(onRemoteDownloadChanged, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(iCloudDownloadSimulateTime, NSNumber);
+RCT_EXPORT_VIEW_PROPERTY(customFetchData, NSDictionary);
 
 
 
