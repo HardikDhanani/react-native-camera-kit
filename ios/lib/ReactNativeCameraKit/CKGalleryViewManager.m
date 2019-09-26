@@ -337,7 +337,7 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     [CKGalleryCollectionViewCell setSupported:supportedDict];
 }
 
-
+NSMutableArray *localizedTitles;
 - (void)setAlbumName:(NSString *)albumName
 {
     if ([albumName caseInsensitiveCompare:@"all photos"] == NSOrderedSame || !albumName || [albumName isEqualToString:@""]) {
@@ -346,23 +346,25 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
         return;
     }
     
-    NSArray *collectionsFetchResults;
-    
-    PHFetchResult *smartAlbums = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeAlbumRegular options:nil];
-    PHFetchResult *syncedAlbums = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum subtype:PHAssetCollectionSubtypeAlbumSyncedAlbum options:nil];
-    PHFetchResult *userCollections = [PHCollectionList fetchTopLevelUserCollectionsWithOptions:nil];
-    
-    // Add each PHFetchResult to the array
-    collectionsFetchResults = @[smartAlbums, userCollections, syncedAlbums];
-    NSMutableArray *localizedTitles = [[NSMutableArray alloc] init];
-    for (int i = 0; i < collectionsFetchResults.count; i ++)
-    {
-        PHFetchResult *fetchResult = collectionsFetchResults[i];
-        for (int x = 0; x < fetchResult.count; x++)
+    if (localizedTitles.count == 0) {
+        NSArray *collectionsFetchResults;
+        PHFetchResult *smartAlbums = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeAlbumRegular options:nil];
+        PHFetchResult *syncedAlbums = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum subtype:PHAssetCollectionSubtypeAlbumSyncedAlbum options:nil];
+        PHFetchResult *userCollections = [PHCollectionList fetchTopLevelUserCollectionsWithOptions:nil];
+        
+        // Add each PHFetchResult to the array
+        collectionsFetchResults = @[smartAlbums, userCollections, syncedAlbums];
+        NSMutableArray *arrLocalizedTitles = [[NSMutableArray alloc] init];
+        for (int i = 0; i < collectionsFetchResults.count; i ++)
         {
-            PHCollection *collection = fetchResult[x];
-            [localizedTitles addObject:collection];
+            PHFetchResult *fetchResult = collectionsFetchResults[i];
+            for (int x = 0; x < fetchResult.count; x++)
+            {
+                PHCollection *collection = fetchResult[x];
+                [arrLocalizedTitles addObject:collection];
+            }
         }
+        localizedTitles = arrLocalizedTitles;
     }
     
     [localizedTitles enumerateObjectsUsingBlock:^(PHAssetCollection *collection, NSUInteger idx, BOOL * _Nonnull stop) {
@@ -386,22 +388,25 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     if (isAlbum) {
         NSString *albumName = [customFetchData valueForKey:@"albumName"];
         
-        NSArray *collectionsFetchResults;
-        PHFetchResult *smartAlbums = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeAlbumRegular options:nil];
-        PHFetchResult *syncedAlbums = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum subtype:PHAssetCollectionSubtypeAlbumSyncedAlbum options:nil];
-        PHFetchResult *userCollections = [PHCollectionList fetchTopLevelUserCollectionsWithOptions:nil];
-        
-        // Add each PHFetchResult to the array
-        collectionsFetchResults = @[smartAlbums, userCollections, syncedAlbums];
-        NSMutableArray *localizedTitles = [[NSMutableArray alloc] init];
-        for (int i = 0; i < collectionsFetchResults.count; i ++)
-        {
-            PHFetchResult *fetchResult = collectionsFetchResults[i];
-            for (int x = 0; x < fetchResult.count; x++)
+        if (localizedTitles.count == 0) {
+            NSArray *collectionsFetchResults;
+            PHFetchResult *smartAlbums = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:PHAssetCollectionSubtypeAlbumRegular options:nil];
+            PHFetchResult *syncedAlbums = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum subtype:PHAssetCollectionSubtypeAlbumSyncedAlbum options:nil];
+            PHFetchResult *userCollections = [PHCollectionList fetchTopLevelUserCollectionsWithOptions:nil];
+            
+            // Add each PHFetchResult to the array
+            collectionsFetchResults = @[smartAlbums, userCollections, syncedAlbums];
+            NSMutableArray *arrLocalizedTitles = [[NSMutableArray alloc] init];
+            for (int i = 0; i < collectionsFetchResults.count; i ++)
             {
-                PHCollection *collection = fetchResult[x];
-                [localizedTitles addObject:collection];
+                PHFetchResult *fetchResult = collectionsFetchResults[i];
+                for (int x = 0; x < fetchResult.count; x++)
+                {
+                    PHCollection *collection = fetchResult[x];
+                    [arrLocalizedTitles addObject:collection];
+                }
             }
+            localizedTitles = arrLocalizedTitles;
         }
         
         [localizedTitles enumerateObjectsUsingBlock:^(PHAssetCollection *collection, NSUInteger idx, BOOL * _Nonnull stop) {
