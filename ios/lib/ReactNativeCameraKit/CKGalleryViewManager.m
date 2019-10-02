@@ -202,18 +202,18 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     
     self.galleryData = [[GalleryData alloc] initWithFetchResults:fetchResults selectedImagesIds:self.selectedImages];
     
-    if (animated) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^ {
-            [self.collectionView performBatchUpdates:^{
-                [self.collectionView reloadSections:[NSIndexSet indexSetWithIndex:0]];
-            } completion:nil];
-        });
-    }
-    else {
+//    if (animated) {
+//        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^ {
+//            [self.collectionView performBatchUpdates:^{
+//                [self.collectionView reloadSections:[NSIndexSet indexSetWithIndex:0]];
+//            } completion:nil];
+//        });
+//    }
+//    else {
         dispatch_async(dispatch_get_main_queue(), ^ {
             [self.collectionView reloadData];
         });
-    }
+//    }
 }
 
 
@@ -337,7 +337,8 @@ static NSString * const CustomCellReuseIdentifier = @"CustomCell";
     [CKGalleryCollectionViewCell setSupported:supportedDict];
 }
 
-NSMutableArray *localizedTitles;
+NSArray *localizedTitles;
+NSArray *arrAddAllPHFetchResult;
 - (void)setAlbumName:(NSString *)albumName
 {
     if ([albumName caseInsensitiveCompare:@"all photos"] == NSOrderedSame || !albumName || [albumName isEqualToString:@""]) {
@@ -380,6 +381,7 @@ NSMutableArray *localizedTitles;
     }];
 }
 
+
 - (void)setCustomFetchData:(NSDictionary *)customFetchData
 {
     BOOL isAlbum = [[customFetchData valueForKey:@"isAlbum"] boolValue];
@@ -387,6 +389,26 @@ NSMutableArray *localizedTitles;
     NSString *mediaType = [customFetchData valueForKey:@"mediaType"];
     if (isAlbum) {
         NSString *albumName = [customFetchData valueForKey:@"albumName"];
+        
+        NSArray *arrFind = [arrAddAllPHFetchResult filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"albumName == %@", albumName]];
+        if (arrFind.count > 0) {
+            PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
+            fetchOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
+            if ([mediaType caseInsensitiveCompare:@"all"] == NSOrderedSame)
+                fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d || mediaType = %d", PHAssetMediaTypeImage, PHAssetMediaTypeVideo];
+            else if ([mediaType caseInsensitiveCompare:@"photos"] == NSOrderedSame)
+                fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
+            else if ([mediaType caseInsensitiveCompare:@"videos"] == NSOrderedSame)
+                fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeVideo];
+            
+            self.fetchOptions = fetchOptions;
+            
+            PHAssetCollection *collection = [arrFind[0] valueForKey:@"collection"];
+            PHFetchResult *collectionFetchResults = [PHAsset fetchAssetsInAssetCollection:collection options:self.fetchOptions];
+            [self upadateCollectionView:collectionFetchResults animated:(self.galleryData != nil)];
+            return;
+        }
+        
         
         if (localizedTitles.count == 0) {
             NSArray *collectionsFetchResults;
@@ -409,8 +431,9 @@ NSMutableArray *localizedTitles;
             localizedTitles = arrLocalizedTitles;
         }
         
+        NSMutableArray *addTemp = [[NSMutableArray alloc] init];
         [localizedTitles enumerateObjectsUsingBlock:^(PHAssetCollection *collection, NSUInteger idx, BOOL * _Nonnull stop) {
-            if ([collection.localizedTitle isEqualToString:albumName]) {
+//            if ([collection.localizedTitle isEqualToString:albumName]) {
                 PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
                 fetchOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
                 if ([mediaType caseInsensitiveCompare:@"all"] == NSOrderedSame)
@@ -422,10 +445,17 @@ NSMutableArray *localizedTitles;
     
                 self.fetchOptions = fetchOptions;
                 PHFetchResult *collectionFetchResults = [PHAsset fetchAssetsInAssetCollection:collection options:self.fetchOptions];
-                [self upadateCollectionView:collectionFetchResults animated:(self.galleryData != nil)];
-                *stop = YES;
-                return;
-            }
+                [addTemp addObject:@{@"albumName":collection.localizedTitle, @"collection": collection}];
+                
+                if ([collection.localizedTitle isEqualToString:albumName])
+                  [self upadateCollectionView:collectionFetchResults animated:(self.galleryData != nil)];
+            
+                if (idx == (addTemp.count-1))
+                    arrAddAllPHFetchResult = addTemp;
+            
+//                *stop = YES;
+//                return;
+//            }
         }];
     } else {
         PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
@@ -660,7 +690,7 @@ NSMutableArray *localizedTitles;
     
     PHImageManager *manager = [PHImageManager defaultManager];
     PHImageRequestOptions *options = [[PHImageRequestOptions alloc] init];
-    options.networkAccessAllowed = NO;
+    options.networkAccessAllowed = YES;
     options.synchronous = YES;
     
     [manager
