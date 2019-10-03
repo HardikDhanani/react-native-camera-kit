@@ -432,8 +432,9 @@ NSArray *arrAddAllPHFetchResult;
         }
         
         NSMutableArray *addTemp = [[NSMutableArray alloc] init];
-        [localizedTitles enumerateObjectsUsingBlock:^(PHAssetCollection *collection, NSUInteger idx, BOOL * _Nonnull stop) {
-//            if ([collection.localizedTitle isEqualToString:albumName]) {
+        [localizedTitles mh_asyncEnumerateObjectsUsingBlock:^(PHAssetCollection *collection, NSUInteger idx, BOOL * _Nonnull stop, dispatch_block_t  _Nonnull next) {
+            // simulate an async network call
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                 PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
                 fetchOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
                 if ([mediaType caseInsensitiveCompare:@"all"] == NSOrderedSame)
@@ -442,21 +443,46 @@ NSArray *arrAddAllPHFetchResult;
                     fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
                 else if ([mediaType caseInsensitiveCompare:@"videos"] == NSOrderedSame)
                     fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeVideo];
-    
+                
                 self.fetchOptions = fetchOptions;
                 PHFetchResult *collectionFetchResults = [PHAsset fetchAssetsInAssetCollection:collection options:self.fetchOptions];
                 [addTemp addObject:@{@"albumName":collection.localizedTitle, @"collection": collection}];
                 
                 if ([collection.localizedTitle isEqualToString:albumName])
-                  [self upadateCollectionView:collectionFetchResults animated:(self.galleryData != nil)];
-            
+                    [self upadateCollectionView:collectionFetchResults animated:(self.galleryData != nil)];
+                
                 if (idx == (addTemp.count-1))
                     arrAddAllPHFetchResult = addTemp;
-            
-//                *stop = YES;
-//                return;
-//            }
+                
+                next();
+            });
         }];
+        
+//        [localizedTitles enumerateObjectsUsingBlock:^(PHAssetCollection *collection, NSUInteger idx, BOOL * _Nonnull stop) {
+////            if ([collection.localizedTitle isEqualToString:albumName]) {
+//                PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
+//                fetchOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
+//                if ([mediaType caseInsensitiveCompare:@"all"] == NSOrderedSame)
+//                    fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d || mediaType = %d", PHAssetMediaTypeImage, PHAssetMediaTypeVideo];
+//                else if ([mediaType caseInsensitiveCompare:@"photos"] == NSOrderedSame)
+//                    fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
+//                else if ([mediaType caseInsensitiveCompare:@"videos"] == NSOrderedSame)
+//                    fetchOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeVideo];
+//
+//                self.fetchOptions = fetchOptions;
+//                PHFetchResult *collectionFetchResults = [PHAsset fetchAssetsInAssetCollection:collection options:self.fetchOptions];
+//                [addTemp addObject:@{@"albumName":collection.localizedTitle, @"collection": collection}];
+//
+//                if ([collection.localizedTitle isEqualToString:albumName])
+//                  [self upadateCollectionView:collectionFetchResults animated:(self.galleryData != nil)];
+//
+//                if (idx == (addTemp.count-1))
+//                    arrAddAllPHFetchResult = addTemp;
+//
+////                *stop = YES;
+////                return;
+////            }
+//        }];
     } else {
         PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
         fetchOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
@@ -1025,7 +1051,6 @@ RCT_EXPORT_METHOD(modifyGalleryViewContentOffset:(NSDictionary*)params) {
 }
 
 #pragma mark - Static functions
-
 
 +(void)infoForAsset:(PHAsset*)asset
                 imageRequestOptions:(PHImageRequestOptions*)imageRequestOptions
