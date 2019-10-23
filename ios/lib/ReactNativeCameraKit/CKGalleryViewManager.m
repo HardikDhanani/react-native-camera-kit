@@ -990,7 +990,7 @@ RCT_EXPORT_METHOD(getSelectedImages:(RCTPromiseResolveBlock)resolve
         
         [self.galleryView.imageManager requestImageDataForAsset:asset options:nil resultHandler:^(NSData * _Nullable imageData, NSString * _Nullable dataUTI, UIImageOrientation orientation, NSDictionary * _Nullable info) {
             
-            NSURL *fileURLKey = info[@"PHImageFileURLKey"];
+            NSURL *fileURLKey = info[@"PHImageFileUTIKey"];
             if (!fileURLKey) {
                 if (resolve) {
                     resolve(nil);
@@ -999,7 +999,7 @@ RCT_EXPORT_METHOD(getSelectedImages:(RCTPromiseResolveBlock)resolve
             
             NSMutableDictionary *assetInfoDict = [[NSMutableDictionary alloc] init];
             imageData = [CKGalleryViewManager handleNonJPEGOrPNGFormatsData:imageData dataUTI:dataUTI];
-            NSString *fileName = ((NSURL*)info[@"PHImageFileURLKey"]).lastPathComponent;
+            NSString *fileName = ((NSURL*)info[@"PHImageFileUTIKey"]).lastPathComponent;
             
             fileName = [CKGalleryViewManager handleNonJPEGOrPNGFormatsFileName:fileName dataUTI:dataUTI];
             if (fileName) {
@@ -1125,7 +1125,7 @@ RCT_EXPORT_METHOD(modifyGalleryViewContentOffset:(NSDictionary*)params) {
         default:
             [[PHCachingImageManager defaultManager] requestImageDataForAsset:asset options:imageRequestOptions resultHandler:^(NSData * _Nullable imageData, NSString * _Nullable dataUTI, UIImageOrientation orientation, NSDictionary * _Nullable info) {
                 
-                NSString *fileName = ((NSURL*)info[@"PHImageFileURLKey"]).lastPathComponent;
+                NSString *fileName = ((NSURL*)info[@"PHImageFileUTIKey"]).lastPathComponent;
                 fileName = [CKGalleryViewManager handleNonJPEGOrPNGFormatsFileName:fileName dataUTI:dataUTI];
                 imageData = [CKGalleryViewManager handleNonJPEGOrPNGFormatsData:imageData dataUTI:dataUTI];
                 
@@ -1133,7 +1133,7 @@ RCT_EXPORT_METHOD(modifyGalleryViewContentOffset:(NSDictionary*)params) {
                 
                 UIImage *compressedImage = [UIImage imageWithData:imageData];
                 
-                NSURL *fileURLKey = info[@"PHImageFileURLKey"];
+                NSURL *fileURLKey = info[@"PHImageFileUTIKey"];
                 
                 if (fileURLKey) {
                     
